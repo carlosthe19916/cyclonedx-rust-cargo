@@ -83,14 +83,15 @@ impl FromXml for Dependencies {
 pub(crate) struct Dependency {
     #[serde(rename = "ref")]
     dependency_ref: String,
-    depends_on: Option<Vec<String>>,
+    #[serde(default)]
+    depends_on: Vec<String>,
 }
 
 impl From<Dependency> for models::dependency::Dependency {
     fn from(other: Dependency) -> Self {
         Self {
             dependency_ref: other.dependency_ref,
-            dependencies: other.depends_on.unwrap_or_default(),
+            dependencies: other.depends_on,
         }
     }
 }
@@ -99,7 +100,7 @@ impl From<models::dependency::Dependency> for Dependency {
     fn from(other: models::dependency::Dependency) -> Self {
         Self {
             dependency_ref: other.dependency_ref,
-            depends_on: Some(other.dependencies),
+            depends_on: other.dependencies,
         }
     }
 }
@@ -116,7 +117,7 @@ impl ToXml for Dependency {
             .write(XmlEvent::start_element(DEPENDENCY_TAG).attr(REF_ATTR, &self.dependency_ref))
             .map_err(to_xml_write_error(DEPENDENCY_TAG))?;
 
-        for dependency in self.depends_on.as_ref().unwrap_or(&vec![]) {
+        for dependency in &self.depends_on {
             writer
                 .write(XmlEvent::start_element(DEPENDENCY_TAG).attr(REF_ATTR, dependency))
                 .map_err(to_xml_write_error(DEPENDENCY_TAG))?;
@@ -171,7 +172,7 @@ impl FromXml for Dependency {
 
         Ok(Self {
             dependency_ref,
-            depends_on: Some(depends_on),
+            depends_on,
         })
     }
 }
@@ -184,7 +185,7 @@ pub(crate) mod test {
     pub(crate) fn example_dependencies() -> Dependencies {
         Dependencies(vec![Dependency {
             dependency_ref: "ref".to_string(),
-            depends_on: Some(vec!["depends on".to_string()]),
+            depends_on: vec!["depends on".to_string()],
         }])
     }
 
@@ -205,7 +206,7 @@ pub(crate) mod test {
             .into();
         let expected = Dependencies(vec![Dependency {
             dependency_ref: "a".to_string(),
-            depends_on: Some(vec!["b".to_string(), "c".to_string()]),
+            depends_on: vec!["b".to_string(), "c".to_string()],
         }]);
         assert_eq!(actual, expected);
     }
@@ -226,7 +227,7 @@ pub(crate) mod test {
     fn it_should_write_xml_dependencies_with_no_children() {
         let xml_output = write_element_to_string(Dependencies(vec![Dependency {
             dependency_ref: "dependency".to_string(),
-            depends_on: Some(Vec::new()),
+            depends_on: Vec::new(),
         }]));
         insta::assert_snapshot!(xml_output);
     }
@@ -265,7 +266,7 @@ pub(crate) mod test {
         let actual: Dependencies = read_element_from_string(input);
         let expected = Dependencies(vec![Dependency {
             dependency_ref: "dependency".to_string(),
-            depends_on: Some(Vec::new()),
+            depends_on: Vec::new(),
         }]);
         assert_eq!(actual, expected);
     }
